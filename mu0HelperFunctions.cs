@@ -103,9 +103,6 @@ namespace DeltaNeverUsed.mu0CPU.Functions
 
         public static AacFlStateMachine copy_from_mem_to_word(AacFlStateMachine sm, memory_word dest, memory src, memory_word PC)
         {
-            //var what = sm.NewState("No idea why i need this");
-            //sm.EntryTransitionsTo(what);
-
             for (int i = 0; i < src.words.Length; i++)
             {
                 var cw = copy_word(sm, dest, src.words[i]);
@@ -113,7 +110,21 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 for (int l = 0; l < 12; l++)
                 {
                     int l2 = 15 - l;
-                    //Debug.Log(funcs.int12_to_bool(i)[l]);
+                    temp.And(PC.bits[l2].IsEqualTo(funcs.int12_to_bool(i)[l]));
+                }
+                cw.Exits();
+            }
+            return sm;
+        }
+        public static AacFlStateMachine copy_from_word_to_mem(AacFlStateMachine sm, memory dest, memory_word src, memory_word PC)
+        {
+            for (int i = 0; i < dest.words.Length; i++)
+            {
+                var cw = copy_word(sm, dest.words[i], src);
+                var temp = sm.EntryTransitionsTo(cw).WhenConditions();
+                for (int l = 0; l < 12; l++)
+                {
+                    int l2 = 15 - l;
                     temp.And(PC.bits[l2].IsEqualTo(funcs.int12_to_bool(i)[l]));
                 }
                 cw.Exits();
