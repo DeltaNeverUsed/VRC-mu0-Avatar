@@ -10,8 +10,8 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
 - Instructions
     - LDA S
     - STO S
-    - ADD S
-    - SUB S
+    - ADD S ✓
+    - SUB S ✓
     - JMP S
     - JGE S
     - JNE S

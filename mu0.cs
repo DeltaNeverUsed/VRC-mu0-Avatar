@@ -82,13 +82,23 @@ namespace DeltaNeverUsed.mu0CPU
 
             var start = fx.NewState("Start");
 
+            var exit = fx.NewState("exit");
+            exit.Exits().AfterAnimationFinishes();
+
             var load_IR = mu0HelperFunctions.copy_from_mem_to_word(fx.NewSubStateMachine("load_IR"), IR, mem, PC);
+
+            //mu0HelperFunctions.copy_word(test, IR, ACC).Exits();
 
             start.TransitionsTo(load_IR).When(fx.BoolParameter("Enabled").IsTrue());
 
-            var ALU = mu0HelperFunctions.create_alu(fx.NewSubStateMachine("ALU"), adder_mode, ACC, reg_A, IR);
-            mu0HelperFunctions.set_conditions_for_OP(ALU, load_IR, opcodes["ADD"], IR);
-            mu0HelperFunctions.set_conditions_for_OP(ALU, load_IR, opcodes["SUB"], IR);
+            var load_reg_A = mu0HelperFunctions.copy_from_mem_to_word(fx.NewSubStateMachine("load_reg_A"), reg_A, mem, IR);
+            mu0HelperFunctions.set_conditions_for_OP(load_reg_A, load_IR, opcodes["ADD"], IR);
+            mu0HelperFunctions.set_conditions_for_OP(load_reg_A, load_IR, opcodes["SUB"], IR);
+
+            var ALU = mu0HelperFunctions.create_alu(fx.NewSubStateMachine("ALU"), adder_mode, ACC, reg_A, IR); // Lummpy__Bunzz
+            load_reg_A.TransitionsTo(ALU);
+
+            ALU.TransitionsTo(exit);
 
 
 

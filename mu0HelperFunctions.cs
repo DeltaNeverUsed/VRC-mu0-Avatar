@@ -64,12 +64,13 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         public static AacFlStateMachine copy_bool(AacFlStateMachine sm, AacFlBoolParameter dest, AacFlBoolParameter src)
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_copy_bool");
+            //var start = sm_local.New
             var one = sm_local.NewState($"{funcs.get_state_id()}_1").Drives(dest, true);
             var zero = sm_local.NewState($"{funcs.get_state_id()}_0").Drives(dest, false);
 
-            sm_local.EntryTransitionsTo(one).When(src.IsTrue());
-            sm_local.EntryTransitionsTo(zero).When(src.IsFalse());
-            one.Exits().AfterAnimationFinishes();
+            sm_local.EntryTransitionsTo(one);
+            one.TransitionsTo(zero).When(src.IsFalse());
+            one.Exits().When(src.IsTrue());
             zero.Exits().AfterAnimationFinishes();
 
             return sm_local;
@@ -84,12 +85,18 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             {
                 var cpb = copy_bool(sm_local, dest.bits[i], src.bits[i]);
 
-                last_sm.TransitionsTo(cpb).When(unused);
+                if(i != 0)
+                {
+                    last_sm.TransitionsTo(cpb);
+                } else
+                {
+                    last_sm.EntryTransitionsTo(cpb);
+                }
 
                 last_sm = cpb;
             }
 
-            last_sm.TransitionsTo(exit_state(sm_local)).When(unused);
+            last_sm.Exits().When(unused);
 
             return sm_local;
         }
@@ -97,7 +104,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         public static AacFlStateMachine copy_from_mem_to_word(AacFlStateMachine sm, memory_word dest, memory src, memory_word PC)
         {
             //var what = sm.NewState("No idea why i need this");
-            //sm.EntryTransitionsTo(what).When(unused);
+            //sm.EntryTransitionsTo(what);
 
             for (int i = 0; i < src.words.Length; i++)
             {
@@ -109,7 +116,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                     //Debug.Log(funcs.int12_to_bool(i)[l]);
                     temp.And(PC.bits[l2].IsEqualTo(funcs.int12_to_bool(i)[l]));
                 }
-                
+                cw.Exits();
             }
             return sm;
         }
@@ -135,8 +142,11 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             set_add_sub.TransitionsTo(adder).When(add_sub.IsFalse());
             set_add_sub.TransitionsTo(subtracter).When(add_sub.IsTrue());
 
-            adder.Exits().When(unused);
-            subtracter.Exits().When(unused);
+            var exit = sm.NewState("exit"); // why do i need this?
+            exit.Exits().AfterAnimationFinishes();
+
+            adder.TransitionsTo(exit);
+            subtracter.TransitionsTo(exit);
 
             return sm;
         }
@@ -144,13 +154,20 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         private static AacFlStateMachine create_subtracter(AacFlStateMachine sm, memory_word ACC, memory_word reg_A)
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Subtracter");
-            var last_sm = sm;
+            var last_sm = sm_local;
 
             for (int i = 0; i < 16; i++)
             {
-                var fsub = create_full_subtracter(sm_local, fx.BoolParameter("Carry"), ACC.bits[i], reg_A.bits[i]);
+                var fsub = create_full_subtracter(sm_local, fx.BoolParameter("Carry"), ACC.bits[15 - i], reg_A.bits[15 - i]);
 
-                last_sm.TransitionsTo(fsub).When(unused);
+                if (i != 0)
+                {
+                    last_sm.TransitionsTo(fsub);
+                }
+                else
+                {
+                    last_sm.EntryTransitionsTo(fsub);
+                }
                 last_sm = fsub;
             }
 
@@ -163,7 +180,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
 
         private static AacFlStateMachine create_full_subtracter(AacFlStateMachine sm, AacFlBoolParameter carry, AacFlBoolParameter a, AacFlBoolParameter b)
         {
-            var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Adder");
+            var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Subtracter");
 
             bool[] input = new bool[]
             {
@@ -195,9 +212,9 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 sub.Drives(a, output[i * 2]);
 
                 sub.TransitionsFromEntry()
-                    .When(a.IsEqualTo(input[0 + i * 2]))
-                    .And(b.IsEqualTo(input[1 + i * 2]))
-                    .And(carry.IsEqualTo(input[2 + i * 2]));
+                    .When(a.IsEqualTo(input[0 + i * 3]))
+                    .And(b.IsEqualTo(input[1 + i * 3]))
+                    .And(carry.IsEqualTo(input[2 + i * 3]));
 
                 sub.Exits().AfterAnimationFinishes();
             }
@@ -208,13 +225,20 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         private static AacFlStateMachine create_adder(AacFlStateMachine sm, memory_word ACC, memory_word reg_A)
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Adder");
-            var last_sm = sm;
+            var last_sm = sm_local;
 
             for (int i = 0; i < 16; i++)
             {
-                var fadd = create_full_adder(sm_local, fx.BoolParameter("Carry"), ACC.bits[i], reg_A.bits[i]);
+                var fadd = create_full_adder(sm_local, fx.BoolParameter("Carry"), ACC.bits[15 - i], reg_A.bits[15 - i]);
 
-                last_sm.TransitionsTo(fadd).When(unused);
+                if (i != 0)
+                {
+                    last_sm.TransitionsTo(fadd);
+                }
+                else
+                {
+                    last_sm.EntryTransitionsTo(fadd);
+                }
                 last_sm = fadd;
             }
 
@@ -259,9 +283,9 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 add.Drives(a, output[i * 2]);
 
                 add.TransitionsFromEntry()
-                    .When(a.IsEqualTo(input[0 + i * 2]))
-                    .And(b.IsEqualTo(input[1 + i * 2]))
-                    .And(carry.IsEqualTo(input[2 + i * 2]));
+                    .When(a.IsEqualTo(input[0 + i * 3]))
+                    .And(b.IsEqualTo(input[1 + i * 3]))
+                    .And(carry.IsEqualTo(input[2 + i * 3]));
 
                 add.Exits().AfterAnimationFinishes();
             }
