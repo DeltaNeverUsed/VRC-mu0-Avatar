@@ -52,7 +52,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             if (test != -1) { return has_exit_state_s[test]; }
 
             var exit = sm.NewState("EXIT");
-            exit.Exits().AfterAnimationFinishes();
+            exit.Exits().When(unused);
 
             has_exit_state.Add(sm);
             has_exit_state_s.Add(exit);
@@ -71,7 +71,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             sm_local.EntryTransitionsTo(one);
             one.TransitionsTo(zero).When(src.IsFalse());
             one.Exits().When(src.IsTrue());
-            zero.Exits().AfterAnimationFinishes();
+            zero.Exits().When(unused);
 
             return sm_local;
         }
@@ -143,6 +143,18 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             return conditions;
         }
 
+        // this is stupid..
+        public static AacFlTransitionContinuation set_conditions_for_OP_to_state(AacFlState sm_dest, AacFlStateMachine sm_src, bool[] opcode, memory_word IR)
+        {
+            var conditions = sm_src.TransitionsTo(sm_dest).WhenConditions();
+            for (int i = 0; i < opcode.Length; i++)
+            {
+                conditions.And(IR.bits[i].IsEqualTo(opcode[i]));
+            }
+
+            return conditions;
+        }
+
         public static AacFlStateMachine create_alu(AacFlStateMachine sm, AacFlBoolParameter add_sub, memory_word ACC, memory_word reg_A, memory_word IR)
         {
             var set_add_sub = copy_bool(sm, add_sub, IR.bits[3]);
@@ -153,11 +165,8 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             set_add_sub.TransitionsTo(adder).When(add_sub.IsFalse());
             set_add_sub.TransitionsTo(subtracter).When(add_sub.IsTrue());
 
-            var exit = sm.NewState("exit"); // why do i need this?
-            exit.Exits().AfterAnimationFinishes();
-
-            adder.TransitionsTo(exit);
-            subtracter.TransitionsTo(exit);
+            adder.Exits();
+            subtracter.Exits();
 
             return sm;
         }
@@ -183,7 +192,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             }
 
             var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
-            reset_c.Exits().AfterAnimationFinishes();
+            reset_c.Exits().When(unused);
             last_sm.TransitionsTo(reset_c);
 
             return sm_local;
@@ -227,7 +236,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                     .And(b.IsEqualTo(input[1 + i * 3]))
                     .And(carry.IsEqualTo(input[2 + i * 3]));
 
-                sub.Exits().AfterAnimationFinishes();
+                sub.Exits().When(unused);
             }
 
             return sm_local;
@@ -254,7 +263,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             }
 
             var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
-            reset_c.Exits().AfterAnimationFinishes();
+            reset_c.Exits().When(unused);
             last_sm.TransitionsTo(reset_c);
 
             return sm_local;
@@ -298,10 +307,84 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                     .And(b.IsEqualTo(input[1 + i * 3]))
                     .And(carry.IsEqualTo(input[2 + i * 3]));
 
-                add.Exits().AfterAnimationFinishes();
+                add.Exits().When(unused);
             }
 
             return sm_local;
+        }
+
+        public static AacFlStateMachine create_counter(AacFlStateMachine sm, memory_word PC)
+        {
+            var last_sm = sm;
+
+            var reset_c = sm.NewState("reset_c").Drives(fx.BoolParameter("Counter_B"), true);
+            sm.EntryTransitionsTo(reset_c);
+
+            for (int i = 0; i < 16; i++)
+            {
+                var hadd = create_half_adder(sm, PC.bits[15 - i], fx.BoolParameter("Counter_B"));
+
+                if (i != 0)
+                {
+                    last_sm.TransitionsTo(hadd);
+                }
+                else
+                {
+                    reset_c.TransitionsTo(hadd).When(unused);
+                }
+                last_sm = hadd;
+            }
+
+            last_sm.Exits();
+
+            return sm;
+        }
+
+        private static AacFlStateMachine create_half_adder(AacFlStateMachine sm, AacFlBoolParameter a, AacFlBoolParameter b)
+        {
+            var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Adder");
+
+            bool[] input = new bool[]
+            {
+                false, false,
+                false, true,
+                true, false,
+                true, true,
+            };
+            bool[] output = new bool[]
+            {
+                false, false,
+                true, false,
+                true, false,
+                false, true,
+            };
+
+            for (int i = 0; i < 4; i++)
+            {
+                var add = sm_local.NewState($"{funcs.get_state_id()}_Adder");
+                add.Drives(b, output[1 + i * 2]);
+                add.Drives(a, output[i * 2]);
+
+                add.TransitionsFromEntry()
+                    .When(a.IsEqualTo(input[0 + i * 2]))
+                    .And(b.IsEqualTo(input[1 + i * 2]));
+
+                add.Exits().When(unused);
+            }
+
+            return sm_local;
+        }
+
+        public static AacFlTransitionContinuation jump_conditions(AacFlStateMachine sm_dest, AacFlStateMachine sm_src, bool and_or, memory_word ACC)
+        {
+            var conditions = sm_src.TransitionsTo(sm_dest).WhenConditions();
+            for (int i = 0; i < 16; i++)
+            {
+                if (and_or) { conditions.And(ACC.bits[i].IsEqualTo(false)); }
+                else { conditions.Or().When(ACC.bits[i].IsEqualTo(false)); }
+            }
+
+            return conditions;
         }
     }
 }
