@@ -16,6 +16,9 @@ public class mu0 : MonoBehaviour
     public VRCAvatarDescriptor avatar;
     public AnimatorController assetContainer;
     public string assetKey;
+
+    [Header("You need atleast 16 words of ram for the screen, it maps to the last 16 words of ram")]
+    public SkinnedMeshRenderer screen;
     [Space(10)]
     public int mem_size = 8;
     public string prog = "";
@@ -24,6 +27,8 @@ public class mu0 : MonoBehaviour
     public memory mem; // not a fan
     [HideInInspector]
     public AacFlLayer fx;
+    [HideInInspector]
+    public AacFlBase aac;
 }
 
 namespace DeltaNeverUsed.mu0CPU
@@ -41,7 +46,7 @@ namespace DeltaNeverUsed.mu0CPU
             { "ADD", new bool[] { false, false, true , false } },
             { "SUB", new bool[] { false, false, true , true  } },
             { "JMP", new bool[] { false, true , false, false } },
-            { "JGE", new bool[] { false, true , false, true  } },
+
             { "JNE", new bool[] { false, true , true , false } },
             { "STP", new bool[] { false, true , true , true  } }
         };
@@ -57,21 +62,16 @@ namespace DeltaNeverUsed.mu0CPU
 
             DrawDefaultInspector();
 
-            if (GUILayout.Button("Create"))
-            {
-                Create();
-            }
-            if (GUILayout.Button("Load Program"))
-            {
-                Load();
-            }
+            if (GUILayout.Button("Create")) { Create(); }
+            if (GUILayout.Button("Create Screen")) { Create_screen(); }
+            if (GUILayout.Button("Load Program")) { Load(); }
         }
 
         private void Load()
         {
             my = (mu0)target;
 
-            bool[] int4_to_bool(int input) // same code as in Helper Functions for for a whole word
+            bool[] int4_to_bool(int input) // same code as in Helper Functions for for a nibble
             {
                 bool[] bools = new bool[4];
 
@@ -84,21 +84,28 @@ namespace DeltaNeverUsed.mu0CPU
                 return bools;
             }
 
-            var aac = AacExample.AnimatorAsCode("mu0", my.avatar, my.assetContainer, my.assetKey);
+            if (my.aac == null)
+            {
+                my.aac = AacExample.AnimatorAsCode("mu0load", my.avatar, my.assetContainer, GUID.Generate().ToString());
+                Debug.Log("my.aac was null");
+            }
+            AacFlBase aac = my.aac;
+
             var load = aac.CreateSupportingFxLayer("Load Prog");
 
             var text = my.prog.Replace(" ", "");
-            if (text.Length/4 > my.mem_size)
+            if (text.Length / 4 > my.mem_size)
             {
                 Debug.LogError("Input Program is bigger than memory");
                 return;
-            } else if (text.Length / 4 < my.mem_size)
+            }
+            else if (text.Length / 4 < my.mem_size)
             {
                 Debug.Log("Input Program is smaller than memory.. padding with zeros..");
                 text = text.PadRight(my.mem_size * 4, '0');
             }
 
-                int pos = 0;
+            int pos = 0;
             int a = 0; // i'm lazy
             foreach (char hex in text)
             {
@@ -114,15 +121,70 @@ namespace DeltaNeverUsed.mu0CPU
                     load.OverrideValue(load.BoolParameter($"{Math.Floor((float)pos / 4f)}_mw{a}"), bit);
                     a++;
                 }
-                
+
                 pos++;
             }
         }
 
+        private void Create_screen()
+        {
+            my = (mu0)target;
+            if (my.mem_size < 16) { Debug.LogError("Not enough memory"); return; }
+
+            if (my.aac == null)
+            {
+                my.aac = AacExample.AnimatorAsCode("mu0screen", my.avatar, my.assetContainer, GUID.Generate().ToString());
+                Debug.Log("my.aac was null");
+            }
+            AacFlBase aac = my.aac;
+
+            aac.RemoveAllSupportingLayers("DisplayMem");
+            var display = aac.CreateSupportingFxLayer("DisplayMem");
+
+            AacFlState[] last_states = new AacFlState[2];
+
+            for (int y = 0; y < 16; y++)
+            {
+                for (int x = 0; x < 16; x++)
+                {
+                    var driver_param = display.BoolParameter($"{my.mem_size - 16 + y}_mw{x}");
+                    var display_1 = display.NewState($"x{x}_y{y}_1")
+                        .WithAnimation(aac.NewClip().Animating(clip =>
+                        {
+                            clip.Animates(my.screen, $"blendShape.{y}_{x}").WithOneFrame(0f);
+                        }));
+                    var display_0 = display.NewState($"x{x}_y{y}_0")
+                        .WithAnimation(aac.NewClip().Animating(clip =>
+                        {
+                            clip.Animates(my.screen, $"blendShape.{y}_{x}").WithOneFrame(80f);
+                        }));
+
+                    if (y+x == 0)
+                    {
+                        display.EntryTransitionsTo(display_1).When(driver_param.IsEqualTo(true));
+                        display.EntryTransitionsTo(display_0).When(driver_param.IsEqualTo(false));
+                    } else {
+                        for (int i = 0; i < 2; i++)
+                        {
+                            last_states[i].TransitionsTo(display_1).When(driver_param.IsEqualTo(true));
+                            last_states[i].TransitionsTo(display_0).When(driver_param.IsEqualTo(false));
+                        }
+                    }
+                    last_states[0] = display_1;
+                    last_states[1] = display_0;
+                }
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                last_states[i].Exits().AfterAnimationFinishes();
+            }
+        }
+        
         private void Create()
         {
             my = (mu0)target;
             aac = AacExample.AnimatorAsCode("mu0", my.avatar, my.assetContainer, my.assetKey);
+            my.aac = aac;
 
             aac.RemoveAllMainLayers();
 
@@ -172,21 +234,18 @@ namespace DeltaNeverUsed.mu0CPU
             // too lazy to rewrite some code so this is ugly and slow
             var jump = fx.NewSubStateMachine("JMP"); 
             var JMP = mu0HelperFunctions.copy_word(jump, PC, IR);
-            var jump_ge_0 = fx.NewSubStateMachine("JGE");
-            var JGE = mu0HelperFunctions.copy_word(jump_ge_0, PC, IR);
             var jump_not_0 = fx.NewSubStateMachine("JNE");
             var JNE = mu0HelperFunctions.copy_word(jump_not_0, PC, IR);
 
-            mu0HelperFunctions.jump_conditions(JGE, jump_ge_0, false, ACC);
             mu0HelperFunctions.jump_conditions(JNE, jump_not_0, true, ACC);
-            jump_ge_0.Exits(); // exits if the above conditions don't return true
-            jump_not_0.Exits();
+            var t2 = jump_not_0.NewState("exit if not true"); // exits if the above conditions don't return true
+            t2.TransitionsTo(exit).AfterAnimationFinishes();
+            jump_not_0.EntryTransitionsTo(t2);
 
             JMP.Exits();
-            JGE.Exits();
             JNE.Exits();
+            jump_not_0.Exits();
             mu0HelperFunctions.set_conditions_for_OP(jump, load_IR, opcodes["JMP"], IR);
-            mu0HelperFunctions.set_conditions_for_OP(jump_ge_0, load_IR, opcodes["JGE"], IR);
             mu0HelperFunctions.set_conditions_for_OP(jump_not_0, load_IR, opcodes["JNE"], IR);
 
             // just turn of enable when the stop instruction is used

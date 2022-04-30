@@ -1,4 +1,5 @@
-﻿using AnimatorAsCode.V0;
+﻿#if UNITY_EDITOR
+using AnimatorAsCode.V0;
 using UnityEngine;
 using System;
 using System.Collections.Generic;
@@ -375,16 +376,15 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             return sm_local;
         }
 
-        public static AacFlTransitionContinuation jump_conditions(AacFlStateMachine sm_dest, AacFlStateMachine sm_src, bool and_or, memory_word ACC)
+        public static void jump_conditions(AacFlStateMachine sm_dest, AacFlStateMachine sm_src, bool and_or, memory_word ACC)
         {
-            var conditions = sm_src.TransitionsTo(sm_dest).WhenConditions();
+            var conditions = sm_src.EntryTransitionsTo(sm_dest).WhenConditions();
             for (int i = 0; i < 16; i++)
             {
-                if (and_or) { conditions.And(ACC.bits[i].IsEqualTo(false)); }
-                else { conditions.Or().When(ACC.bits[i].IsEqualTo(false)); }
+                if (and_or) { sm_src.EntryTransitionsTo(sm_dest).WhenConditions().Or().When(ACC.bits[i].IsEqualTo(true)); }
+                else { conditions.And(ACC.bits[i].IsEqualTo(false)); }
             }
-
-            return conditions;
         }
     }
 }
+#endif

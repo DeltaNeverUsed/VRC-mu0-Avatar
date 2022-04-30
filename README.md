@@ -3,11 +3,9 @@
 
 A mu0 CPU on a VRChat avatar run entirely within the animator controller
 ## TODO
-- Some sort of visual output (a 16*16 monochrome display? i think i could still keep it quest compatible with that)
+- Some sort of visual output (a 16*16 monochrome display) ✓
 - Some sort of input (a controller perhaps?)
-- PC ✓
-- Load Mem to IR ✓
-- Instructions
+- Instructions ✓
     - LDA S ✓
     - STO S ✓
     - ADD S ✓
