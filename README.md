@@ -11,7 +11,7 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
     - ADD S ✓
     - SUB S ✓
     - JMP S ✓
-    - JGE S ✓
+    - JGE S ✗ negative numbers are not implemented
     - JNE S ✓
     - STP ✓
 ## Installation
