@@ -156,15 +156,13 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             return conditions;
         }
 
-        public static AacFlStateMachine create_alu(AacFlStateMachine sm, AacFlBoolParameter add_sub, memory_word ACC, memory_word reg_A, memory_word IR)
+        public static AacFlStateMachine create_alu(AacFlStateMachine sm, memory_word ACC, memory_word reg_A, memory_word IR)
         {
-            var set_add_sub = copy_bool(sm, add_sub, IR.bits[3]);
-
             var adder = create_adder(sm, ACC, reg_A);
             var subtracter = create_subtracter(sm, ACC, reg_A);
 
-            set_add_sub.TransitionsTo(adder).When(add_sub.IsFalse());
-            set_add_sub.TransitionsTo(subtracter).When(add_sub.IsTrue());
+            sm.EntryTransitionsTo(adder).When(IR.bits[3].IsFalse());
+            sm.EntryTransitionsTo(subtracter).When(IR.bits[3].IsTrue());
 
             adder.Exits();
             subtracter.Exits();
@@ -375,6 +373,42 @@ namespace DeltaNeverUsed.mu0CPU.Functions
 
             return sm_local;
         }
+        private static AacFlStateMachine create_half_subtracter(AacFlStateMachine sm, AacFlBoolParameter a, AacFlBoolParameter b)
+        {
+            var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Adder");
+
+            bool[] input = new bool[]
+            {
+                false, false,
+                false, true,
+                true, false,
+                true, true,
+            };
+            bool[] output = new bool[]
+            {
+                false, false,
+                true, true,
+                true, false,
+                false, false,
+            };
+
+            for (int i = 0; i < 4; i++)
+            {
+                var add = sm_local.NewState($"{funcs.get_state_id()}_Adder");
+                add.Drives(b, output[1 + i * 2]);
+                add.Drives(a, output[i * 2]);
+
+                add.TransitionsFromEntry()
+                    .When(a.IsEqualTo(input[0 + i * 2]))
+                    .And(b.IsEqualTo(input[1 + i * 2]));
+
+                add.Exits().When(unused);
+            }
+
+            return sm_local;
+        }
+        // all the half/full subtracter/adders should just be combined into a single "truth table substate"
+        // i might do that later at some point
 
         public static void jump_conditions(AacFlStateMachine sm_dest, AacFlStateMachine sm_src, bool and_or, memory_word ACC)
         {
@@ -393,6 +427,20 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
             }
             
+        }
+
+        public static AacFlStateMachine shift(AacFlStateMachine sm, memory_word ACC, memory_word IR)
+        {
+            var adder = create_adder(sm, ACC, ACC);
+            var subtracter = create_subtracter(sm, ACC, ACC);
+
+            sm.EntryTransitionsTo(adder).When(IR.bits[15].IsFalse());
+            sm.EntryTransitionsTo(subtracter).When(IR.bits[15].IsTrue());
+
+            adder.Exits();
+            subtracter.Exits();
+
+            return sm;
         }
     }
 }

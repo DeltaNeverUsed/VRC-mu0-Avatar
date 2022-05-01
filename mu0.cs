@@ -46,7 +46,7 @@ namespace DeltaNeverUsed.mu0CPU
             { "ADD", new bool[] { false, false, true , false } },
             { "SUB", new bool[] { false, false, true , true  } },
             { "JMP", new bool[] { false, true , false, false } },
-
+            { "SA",  new bool[] { false, true , false, true  } },
             { "JNE", new bool[] { false, true , true , false } },
             { "STP", new bool[] { false, true , true , true  } }
         };
@@ -203,8 +203,6 @@ namespace DeltaNeverUsed.mu0CPU
             memory_word ACC = new memory_word().init(fx);
             memory_word reg_A = new memory_word().init(fx);
 
-            AacFlBoolParameter adder_mode = fx.BoolParameter("adder_mode");
-
             var start = fx.NewState("Start");
 
             var load_IR = mu0HelperFunctions.copy_from_mem_to_word(fx.NewSubStateMachine("load_IR"), IR, mem, PC);
@@ -227,9 +225,12 @@ namespace DeltaNeverUsed.mu0CPU
             mu0HelperFunctions.set_conditions_for_OP(load_reg_A, load_IR, opcodes["SUB"], IR);
 
             // Adding and subtracting
-            var ALU = mu0HelperFunctions.create_alu(fx.NewSubStateMachine("ALU"), adder_mode, ACC, reg_A, IR).Shift(load_reg_A, 1, -3); ; // Lummpy__Bunzz
+            var ALU = mu0HelperFunctions.create_alu(fx.NewSubStateMachine("ALU"), ACC, reg_A, IR).Shift(load_reg_A, 1, -3); // Lummpy__Bunzz
             mu0HelperFunctions.set_conditions_for_OP(ALU, load_reg_A, opcodes["ADD"], IR);
             mu0HelperFunctions.set_conditions_for_OP(ALU, load_reg_A, opcodes["SUB"], IR);
+
+            var shift = mu0HelperFunctions.shift(fx.NewSubStateMachine("shift"), ACC, IR); // shifting ACC left and right
+            mu0HelperFunctions.set_conditions_for_OP(shift, load_IR, opcodes["SA"], IR);
 
             // too lazy to rewrite some code so this is ugly and slow
             var jump = fx.NewSubStateMachine("JMP"); 
