@@ -23,8 +23,7 @@ public class mu0 : MonoBehaviour
     public int mem_size = 8;
     public string prog = "";
 
-    [HideInInspector] 
-    public memory mem; // not a fan
+     // not a fan
     [HideInInspector]
     public AacFlLayer fx;
     [HideInInspector]
@@ -192,9 +191,7 @@ namespace DeltaNeverUsed.mu0CPU
             fx = aac.CreateMainFxLayer();
             mu0HelperFunctions.init(fx);
 
-
-            memory mem = my.mem;
-            mem = new memory().init(fx, my.mem_size);
+            memory mem = new memory().init(fx, my.mem_size);
 
             memory_word IR = new memory_word().init(fx);
 
@@ -231,6 +228,7 @@ namespace DeltaNeverUsed.mu0CPU
 
             var shift = mu0HelperFunctions.shift(fx.NewSubStateMachine("shift"), ACC, IR); // shifting ACC left and right
             mu0HelperFunctions.set_conditions_for_OP(shift, load_IR, opcodes["SA"], IR);
+            shift.TransitionsTo(exit);
 
             // too lazy to rewrite some code so this is ugly and slow
             var jump = fx.NewSubStateMachine("JMP"); 
@@ -245,6 +243,7 @@ namespace DeltaNeverUsed.mu0CPU
 
             JMP.Exits();
             JNE.Exits();
+            jump.Exits();
             jump_not_0.Exits();
             mu0HelperFunctions.set_conditions_for_OP(jump, load_IR, opcodes["JMP"], IR);
             mu0HelperFunctions.set_conditions_for_OP(jump_not_0, load_IR, opcodes["JNE"], IR);
@@ -256,7 +255,6 @@ namespace DeltaNeverUsed.mu0CPU
 
             load_ACC.TransitionsTo(exit);
             store_ACC.TransitionsTo(exit);
-            jump.TransitionsTo(exit);
             ALU.TransitionsTo(exit);
 
         }

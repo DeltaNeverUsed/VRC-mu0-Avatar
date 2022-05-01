@@ -15,7 +15,7 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
     - 0110 JNE S ✓
     - 0111 STP ✓
 - Extended Instrucions
-    - 0101 SA  
+    - 0101 SA S ✓ Shift acc left or right depending on S
 ## Installation
 
 Requirements
