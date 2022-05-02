@@ -10,6 +10,7 @@ using System;
 
 using DeltaNeverUsed.mu0CPU.Structs;
 using DeltaNeverUsed.mu0CPU.Functions;
+using System.Linq;
 
 public class mu0 : MonoBehaviour
 {
@@ -22,12 +23,6 @@ public class mu0 : MonoBehaviour
     [Space(10)]
     public int mem_size = 8;
     public string prog = "";
-
-     // not a fan
-    [HideInInspector]
-    public AacFlLayer fx;
-    [HideInInspector]
-    public AacFlBase aac;
 }
 
 namespace DeltaNeverUsed.mu0CPU
@@ -63,7 +58,54 @@ namespace DeltaNeverUsed.mu0CPU
 
             if (GUILayout.Button("Create")) { Create(); }
             if (GUILayout.Button("Create Screen")) { Create_screen(); }
+            if (GUILayout.Button("Create Contracts for display")) { CreateContractsAndLogicForDisplay(); }
+            GUILayout.Space(10);
             if (GUILayout.Button("Load Program")) { Load(); }
+        }
+
+        private void CreateContractsAndLogicForDisplay()
+        {
+            my = (mu0)target;
+
+            var aac = AacExample.AnimatorAsCode("mu0displayInteract", my.avatar, my.assetContainer, GUID.Generate().ToString());
+
+            var display = aac.CreateMainFxLayer();
+
+            var entry = display.NewState("Entry");
+
+            var tempList = my.screen.transform.Cast<Transform>().ToList(); // taken straight from the unity forums 
+            foreach (var child in tempList)
+            {
+                DestroyImmediate(child.gameObject);
+            }
+
+            for (int y = 0; y < 16; y++)
+            {
+                for (int x = 0; x < 16; x++)
+                {   
+                    GameObject contact = new GameObject();
+                    contact.transform.parent = my.screen.transform;
+                    var cr = contact.GetOrAddComponent<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>();
+                    cr.radius = 0.01f;
+                    cr.collisionTags.Add("FingerIndex");
+                    cr.receiverType = VRC.Dynamics.ContactReceiver.ReceiverType.OnEnter;
+                    cr.parameter = $"DProx_X{x}_Y{y}";
+
+                    var pos = new Vector3(0.9375f, 0, 0.9375f);
+                    pos.x -= (float)x * 0.125f;
+                    pos.z += (float)y * 0.125f;
+                    contact.transform.localPosition = pos;
+                    contact.name = $"X {x}, Y {y}";
+
+                    for (int zo = 0; zo < 2; zo++)
+                    {
+                        var state = display.NewState($"X {x}, Y {y}")
+                            .Drives(display.BoolParameter($"{y}_mw{x}"), Convert.ToBoolean(zo));
+                        entry.TransitionsTo(state).When(display.BoolParameter($"DProx_X{x}_Y{y}").IsEqualTo(Convert.ToBoolean(zo)));
+                    }
+                }
+            }
+            
         }
 
         private void Load()
@@ -83,12 +125,7 @@ namespace DeltaNeverUsed.mu0CPU
                 return bools;
             }
 
-            if (my.aac == null)
-            {
-                my.aac = AacExample.AnimatorAsCode("mu0load", my.avatar, my.assetContainer, GUID.Generate().ToString());
-                Debug.Log("my.aac was null");
-            }
-            AacFlBase aac = my.aac;
+            var aac = AacExample.AnimatorAsCode("mu0load", my.avatar, my.assetContainer, GUID.Generate().ToString());
 
             var load = aac.CreateSupportingFxLayer("Load Prog");
 
@@ -130,12 +167,7 @@ namespace DeltaNeverUsed.mu0CPU
             my = (mu0)target;
             if (my.mem_size < 16) { Debug.LogError("Not enough memory"); return; }
 
-            if (my.aac == null)
-            {
-                my.aac = AacExample.AnimatorAsCode("mu0screen", my.avatar, my.assetContainer, GUID.Generate().ToString());
-                Debug.Log("my.aac was null");
-            }
-            AacFlBase aac = my.aac;
+            var aac = AacExample.AnimatorAsCode("mu0screen", my.avatar, my.assetContainer, GUID.Generate().ToString());
 
             aac.RemoveAllSupportingLayers("DisplayMem");
             var display = aac.CreateSupportingFxLayer("DisplayMem");
@@ -182,13 +214,11 @@ namespace DeltaNeverUsed.mu0CPU
         private void Create()
         {
             my = (mu0)target;
-            aac = AacExample.AnimatorAsCode("mu0", my.avatar, my.assetContainer, my.assetKey);
-            my.aac = aac;
+            var aac = AacExample.AnimatorAsCode("mu0", my.avatar, my.assetContainer, my.assetKey);
 
             aac.RemoveAllMainLayers();
 
-            var fx = my.fx;
-            fx = aac.CreateMainFxLayer();
+            var fx = aac.CreateMainFxLayer();
             mu0HelperFunctions.init(fx);
 
             memory mem = new memory().init(fx, my.mem_size);
