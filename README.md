@@ -4,7 +4,7 @@
 A mu0 CPU on a VRChat avatar run entirely within the animator controller
 ## Features
 - Some sort of visual output (a 16*16 monochrome display) ✓
-- Some sort of input (a controller perhaps?)
+- Some sort of input (toggleable bits on the display) ✓
 - Orignial mu0 Instructions
     - 0000 LDA S ✓
     - 0001 STO S ✓

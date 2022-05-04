@@ -99,9 +99,13 @@ namespace DeltaNeverUsed.mu0CPU
 
                     for (int zo = 0; zo < 2; zo++)
                     {
+                        var y_s = y + my.mem_size - 16;
                         var state = display.NewState($"X {x}, Y {y}")
-                            .Drives(display.BoolParameter($"{y}_mw{x}"), Convert.ToBoolean(zo));
-                        entry.TransitionsTo(state).When(display.BoolParameter($"DProx_X{x}_Y{y}").IsEqualTo(Convert.ToBoolean(zo)));
+                            .Drives(display.BoolParameter($"{y_s}_mw{x}"), Convert.ToBoolean(zo));
+                        entry.TransitionsTo(state)
+                            .When(display.BoolParameter($"DProx_X{x}_Y{y}").IsEqualTo(true))
+                            .And(display.BoolParameter($"{y_s}_mw{x}").IsEqualTo(!Convert.ToBoolean(zo)));
+                        state.Exits().AfterAnimationFinishes();
                     }
                 }
             }
