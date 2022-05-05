@@ -42,7 +42,8 @@ namespace DeltaNeverUsed.mu0CPU
             { "JMP", new bool[] { false, true , false, false } },
             { "SA",  new bool[] { false, true , false, true  } },
             { "JNE", new bool[] { false, true , true , false } },
-            { "STP", new bool[] { false, true , true , true  } }
+            { "STP", new bool[] { false, true , true , true  } },
+            { "LDR", new bool[] { true , false, false, false } }
         };
 
         public override void OnInspectorGUI()
@@ -55,7 +56,16 @@ namespace DeltaNeverUsed.mu0CPU
             }
 
             DrawDefaultInspector();
-
+            if (GUILayout.Button("Create All")) {
+                EditorUtility.DisplayProgressBar("Creating Animations", "Step: 1", 1f / 3f);
+                Create();
+                EditorUtility.DisplayProgressBar("Creating Animations", "Step: 2", 2f / 3f);
+                Create_screen();
+                EditorUtility.DisplayProgressBar("Creating Animations", "Step: 3", 3f / 3f);
+                CreateContractsAndLogicForDisplay();
+                EditorUtility.ClearProgressBar();
+            }
+            GUILayout.Space(10);
             if (GUILayout.Button("Create")) { Create(); }
             if (GUILayout.Button("Create Screen")) { Create_screen(); }
             if (GUILayout.Button("Create Contracts for display")) { CreateContractsAndLogicForDisplay(); }
@@ -260,9 +270,15 @@ namespace DeltaNeverUsed.mu0CPU
             mu0HelperFunctions.set_conditions_for_OP(ALU, load_reg_A, opcodes["ADD"], IR);
             mu0HelperFunctions.set_conditions_for_OP(ALU, load_reg_A, opcodes["SUB"], IR);
 
-            var shift = mu0HelperFunctions.shift(fx.NewSubStateMachine("shift"), ACC, IR); // shifting ACC left and right
+            // shifting ACC left and right
+            var shift = mu0HelperFunctions.shift(fx.NewSubStateMachine("shift"), ACC, IR);
             mu0HelperFunctions.set_conditions_for_OP(shift, load_IR, opcodes["SA"], IR);
             shift.TransitionsTo(exit);
+
+            // loading a register into ACC
+            var reg_load = mu0HelperFunctions.load_reg(fx.NewSubStateMachine("reg_load"), ACC, IR);
+            mu0HelperFunctions.set_conditions_for_OP(reg_load, load_IR, opcodes["LDR"], IR);
+            reg_load.TransitionsTo(exit);
 
             // too lazy to rewrite some code so this is ugly and slow
             var jump = fx.NewSubStateMachine("JMP"); 

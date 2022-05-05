@@ -199,6 +199,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         private static AacFlStateMachine create_subtracter(AacFlStateMachine sm, memory_word ACC, memory_word reg_A)
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Subtracter");
+            var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
             var last_sm = sm_local;
 
             bool[] sub_input = new bool[]
@@ -243,9 +244,8 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 last_sm = fsub;
             }
 
-            var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
-            reset_c.Exits().When(unused);
-            last_sm.TransitionsTo(reset_c);
+            last_sm.Exits();
+            sm_local.EntryTransitionsTo(reset_c);
 
             return sm_local;
         }
@@ -253,6 +253,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         private static AacFlStateMachine create_adder(AacFlStateMachine sm, memory_word ACC, memory_word reg_A)
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Adder");
+            var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
             var last_sm = sm_local;
 
             bool[] add_input = new bool[]
@@ -297,9 +298,8 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 last_sm = fadd;
             }
 
-            var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
-            reset_c.Exits().When(unused);
-            last_sm.TransitionsTo(reset_c);
+            last_sm.Exits();
+            sm_local.EntryTransitionsTo(reset_c);
 
             return sm_local;
         }
@@ -367,6 +367,30 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
             }
             
+        }
+
+        public static AacFlStateMachine load_reg(AacFlStateMachine sm, memory_word ACC, memory_word IR)
+        {
+            var c = sm.NewSubStateMachine("Load carry");
+
+            var c_one = c.NewState($"{funcs.get_state_id()}_1").Drives(ACC.bits[15], true);
+            var c_zero = c.NewState($"{funcs.get_state_id()}_0").Drives(ACC.bits[15], false);
+
+            c.EntryTransitionsTo(c_one);
+            c_one.TransitionsTo(c_zero).When(fx.BoolParameter("Carry").IsFalse());
+            c_one.Exits().When(fx.BoolParameter("Carry").IsTrue());
+            c_zero.Exits().When(unused);
+
+            for (int i = 0; i < 15; i++)
+            {
+                c_one.Drives(ACC.bits[i], false);
+                c_zero.Drives(ACC.bits[i], false);
+            }
+
+            var c_temp = sm.EntryTransitionsTo(c).WhenConditions();
+            for (int i = 0; i < 12; i++) { c_temp.And(IR.bits[11 - i].IsEqualTo(funcs.int12_to_bool(0)[11 - i])); }
+
+            return sm;
         }
 
         public static AacFlStateMachine shift(AacFlStateMachine sm, memory_word ACC, memory_word IR)

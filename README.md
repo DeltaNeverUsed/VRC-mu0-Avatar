@@ -16,6 +16,8 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
     - 0111 STP ✓
 - Extended Instrucions
     - 0101 SA S ✓ Shift acc left or right depending on S
+    - 1000 LDR S ✓ Loads a register into ACC. Current Registers ↓
+        - 0x000 ACC
 ## Installation
 
 Requirements
