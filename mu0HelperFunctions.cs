@@ -200,6 +200,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Subtracter");
             var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
+            sm_local.EntryTransitionsTo(reset_c);
             var last_sm = sm_local;
 
             bool[] sub_input = new bool[]
@@ -239,13 +240,12 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
                 else
                 {
-                    last_sm.EntryTransitionsTo(fsub);
+                    reset_c.TransitionsTo(fsub);
                 }
                 last_sm = fsub;
             }
 
             last_sm.Exits();
-            sm_local.EntryTransitionsTo(reset_c);
 
             return sm_local;
         }
@@ -254,6 +254,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         {
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_Adder");
             var reset_c = sm_local.NewState("reset_c").Drives(fx.BoolParameter("Carry"), false);
+            sm_local.EntryTransitionsTo(reset_c);
             var last_sm = sm_local;
 
             bool[] add_input = new bool[]
@@ -293,13 +294,12 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
                 else
                 {
-                    last_sm.EntryTransitionsTo(fadd);
+                    reset_c.TransitionsTo(reset_c);
                 }
                 last_sm = fadd;
             }
 
             last_sm.Exits();
-            sm_local.EntryTransitionsTo(reset_c);
 
             return sm_local;
         }
@@ -380,6 +380,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             c_one.TransitionsTo(c_zero).When(fx.BoolParameter("Carry").IsFalse());
             c_one.Exits().When(fx.BoolParameter("Carry").IsTrue());
             c_zero.Exits().When(unused);
+            c.Exits();
 
             for (int i = 0; i < 15; i++)
             {
