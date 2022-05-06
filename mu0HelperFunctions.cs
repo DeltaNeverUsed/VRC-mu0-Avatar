@@ -240,7 +240,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
                 else
                 {
-                    reset_c.TransitionsTo(fsub);
+                    reset_c.TransitionsTo(fsub).When(unused);
                 }
                 last_sm = fsub;
             }
@@ -294,7 +294,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
                 else
                 {
-                    reset_c.TransitionsTo(reset_c);
+                    reset_c.TransitionsTo(reset_c).When(unused);
                 }
                 last_sm = fadd;
             }
