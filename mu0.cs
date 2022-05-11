@@ -18,6 +18,12 @@ public class mu0 : MonoBehaviour
     public AnimatorController assetContainer;
     public string assetKey;
 
+    [Header("Force old method of copying memory addresses")]
+    [Tooltip("This hugely effects the speed of the cpu\n" +
+        "This is only here for debugging")]
+    public bool force_old_word = false;
+    [Space(20)]
+
     [Header("You need atleast 16 words of ram for the screen, it maps to the last 16 words of ram")]
     public SkinnedMeshRenderer screen;
     [Space(10)]
@@ -233,7 +239,7 @@ namespace DeltaNeverUsed.mu0CPU
             aac.RemoveAllMainLayers();
 
             var fx = aac.CreateMainFxLayer();
-            mu0HelperFunctions.init(fx);
+            mu0HelperFunctions.init(fx, my.force_old_word);
 
             memory mem = new memory().init(fx, my.mem_size);
 

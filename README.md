@@ -3,8 +3,8 @@
 
 A mu0 CPU on a VRChat avatar run entirely within the animator controller
 ## Features
-- Some sort of visual output (a 16*16 monochrome display) ✓
-- Some sort of input (toggleable bits on the display) ✓
+- a 16*16 monochrome display ✓
+- toggleable bits on the display ✓
 - Orignial mu0 Instructions
     - 0000 LDA S ✓
     - 0001 STO S ✓
@@ -24,4 +24,17 @@ Requirements
 - [Animator As Code](https://github.com/hai-vr/av3-animator-as-code)
 
 Install
-- TODO
+1) Clone the GitHub repo into your unity project
+2) Add the mu0 script to an empty object in your scene hierarchy outside your avatar
+    - (optional) Add the screen object from the mu0 folder onto your avatar 
+3) Fill out the fields
+    - Avatar: Your avatar's VRCAvatarDescriptor
+    - Asset Container: Your FX controller
+    - Screen (optional): The screen mesh
+    - Mem_size: The amount of memory you want
+    - Prog (optional): The program you want to load in Hex into the memory (not used while creating the animations)
+4) Hit Create to create the animations for all the logic
+5) Create Screen (optional)
+    - Hit Create Screen to create all the animations for displaying the last 16 words of memory on the display
+    - Hit Create Contacts for display to make said words toggle-able 
+6) Load your program by hitting Load Program (optional)

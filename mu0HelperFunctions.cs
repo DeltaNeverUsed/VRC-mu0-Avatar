@@ -17,11 +17,11 @@ public static class funcs
     private static int state_amount = 0;
     public static int get_state_id() { state_amount++; return state_amount - 1; }
 
-    public static bool[] int12_to_bool(int input)
+    public static bool[] int_to_bool(int input, int size = 12)
     {
         bool[] bools = new bool[12];
 
-        for (int i = 0; i < 12; i++)
+        for (int i = 0; i < size; i++)
         {
             int temp = input >> i;
             bools[i] = Convert.ToBoolean(temp & 1);
@@ -38,12 +38,15 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         public static AacFlLayer fx;
         public static IAacFlCondition unused;
 
+        public static bool force_old_word;
+
         private static List<AacFlStateMachine> has_exit_state = new List<AacFlStateMachine>();
         private static List<AacFlState> has_exit_state_s = new List<AacFlState>();
 
-        public static void init(AacFlLayer t_fx)
+        public static void init(AacFlLayer t_fx, bool force_old_word_t)
         {
             fx = t_fx;
+            force_old_word = force_old_word_t;
             unused = fx.BoolParameter("UNUSED").IsFalse();
         }
 
@@ -82,21 +85,71 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_copy_word");
             var last_sm = sm_local;
 
-            for (int i = 0; i < 16; i++)
+            // old code
+            if (offset != 0 || force_old_word)
             {
-                // this is really ugly
-                var a = dir ? 15 - i + offset : i + offset;
-                var cpb = copy_bool(sm_local, dest.bits[dir ? 15 - i : i], (a > 15 || a < 0) ? fx.BoolParameter("UNUSED") : src.bits[a]);
+                for (int i = 0; i < 16; i++)
+                {
+                    // this is really ugly
+                    var a = dir ? 15 - i + offset : i + offset;
+                    var cpb = copy_bool(sm_local, dest.bits[dir ? 15 - i : i], (a > 15 || a < 0) ? fx.BoolParameter("UNUSED") : src.bits[a]);
 
-                if(i != 0)
+                    if (i != 0)
+                    {
+                        last_sm.TransitionsTo(cpb);
+                    }
+                    else
+                    {
+                        last_sm.EntryTransitionsTo(cpb);
+                    }
+
+                    last_sm = cpb;
+                }
+            }
+            else // faster word copy, probably more cpu intensive though..
+            {
+                AacFlBoolParameter[] first_byte = new AacFlBoolParameter[8];
+                AacFlBoolParameter[] second_byte = new AacFlBoolParameter[8];
+                Array.Copy(dest.bits, 0, first_byte, 0, 8);
+                Array.Copy(dest.bits, 7, second_byte, 0, 8);
+
+                AacFlBoolParameter[] first_byte_src = new AacFlBoolParameter[8];
+                AacFlBoolParameter[] second_byte_src = new AacFlBoolParameter[8];
+                Array.Copy(dest.bits, 0, first_byte_src, 0, 8);
+                Array.Copy(dest.bits, 7, second_byte_src, 0, 8);
+
+                var cp_table = new List<bool>();
+
+                for (int i = 0; i < 256; i++)
                 {
-                    last_sm.TransitionsTo(cpb);
-                } else
-                {
-                    last_sm.EntryTransitionsTo(cpb);
+                    var temp = funcs.int_to_bool(i, 8);
+                    foreach (bool t_b in temp)
+                    {
+                        cp_table.Add(t_b);
+                    }
                 }
 
-                last_sm = cpb;
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    var t = create_truth_table(
+                        sm_local,
+                        pass == 0 ? first_byte_src : second_byte_src,
+                        pass == 0 ? first_byte : second_byte,
+                        cp_table.ToArray(),
+                        cp_table.ToArray()
+                    );
+
+                    if (pass != 0)
+                    {
+                        last_sm.TransitionsTo(t);
+                    }
+                    else
+                    {
+                        last_sm.EntryTransitionsTo(t);
+                    }
+
+                    last_sm = t;
+                }
             }
 
             last_sm.Exits().When(unused);
@@ -113,7 +166,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 for (int l = 0; l < 12; l++)
                 {
                     int l2 = 15 - l;
-                    temp.And(PC.bits[l2].IsEqualTo(funcs.int12_to_bool(i)[l]));
+                    temp.And(PC.bits[l2].IsEqualTo(funcs.int_to_bool(i)[l]));
                 }
                 cw.Exits();
             }
@@ -128,7 +181,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 for (int l = 0; l < 12; l++)
                 {
                     int l2 = 15 - l;
-                    temp.And(PC.bits[l2].IsEqualTo(funcs.int12_to_bool(i)[l]));
+                    temp.And(PC.bits[l2].IsEqualTo(funcs.int_to_bool(i)[l]));
                 }
                 cw.Exits();
             }
@@ -389,7 +442,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             }
 
             var c_temp = sm.EntryTransitionsTo(c).WhenConditions();
-            for (int i = 0; i < 12; i++) { c_temp.And(IR.bits[11 - i].IsEqualTo(funcs.int12_to_bool(0)[11 - i])); }
+            for (int i = 0; i < 12; i++) { c_temp.And(IR.bits[11 - i].IsEqualTo(funcs.int_to_bool(0)[11 - i])); }
 
             return sm;
         }
