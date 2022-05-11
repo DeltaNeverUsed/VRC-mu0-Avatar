@@ -21,7 +21,7 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
 ## Installation
 
 Requirements
-- [Animator As Code](https://github.com/hai-vr/av3-animator-as-code)
+- [Animator As Code](https://github.com/hai-vr/av3-animator-as-code/tree/pr-sub-state-machines-rebase) make sure it's the sub state machine branch
 
 Install
 1) Clone the GitHub repo into your unity project
