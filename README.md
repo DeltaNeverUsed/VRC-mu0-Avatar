@@ -5,7 +5,7 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
 ## Features
 - a 16*16 monochrome display ✓
 - toggleable bits on the display ✓
-- Orignial mu0 Instructions
+- Original mu0 Instructions
     - 0000 LDA S ✓
     - 0001 STO S ✓
     - 0010 ADD S ✓
@@ -14,14 +14,15 @@ A mu0 CPU on a VRChat avatar run entirely within the animator controller
     - 0101 JGE S ✗ negative numbers are not implemented
     - 0110 JNE S ✓
     - 0111 STP ✓
-- Extended Instrucions
+- Extended Instructions
     - 0101 SA S ✓ Shift acc left or right depending on S
     - 1000 LDR S ✓ Loads a register into ACC. Current Registers ↓
         - 0x000 ACC
 ## Installation
 
 Requirements
-- [Animator As Code](https://github.com/hai-vr/av3-animator-as-code/tree/pr-sub-state-machines-rebase) make sure it's the sub state machine branch
+- [Animator As Code](https://github.com/hai-vr/av3-animator-as-code/tree/pr-sub-state-machines-rebase) make sure it's the sub state machine branch.
+    and you'll need to apply this [patch]( https://github.com/hai-vr/av3-animator-as-code/commit/8e15564f019fa14ec20091c6e9c4bc4928930fbb) since the parameter drive branch hasn't been fully updated at the time of writing
 
 Install
 1) Clone the GitHub repo into your unity project

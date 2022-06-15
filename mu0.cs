@@ -21,7 +21,6 @@ public class mu0 : MonoBehaviour
     [Header("Force old method of copying memory addresses")]
     [Tooltip("This hugely effects the speed of the cpu\n" +
         "This is only here for debugging")]
-    public bool force_old_word = false;
     [Space(20)]
 
     [Header("You need atleast 16 words of ram for the screen, it maps to the last 16 words of ram")]
@@ -189,13 +188,17 @@ namespace DeltaNeverUsed.mu0CPU
 
             var aac = AacExample.AnimatorAsCode("mu0screen", my.avatar, my.assetContainer, GUID.Generate().ToString());
 
-            aac.RemoveAllSupportingLayers("DisplayMem");
-            var display = aac.CreateSupportingFxLayer("DisplayMem");
+            for (int i = 0; i < 16; i++)
+            {
+                aac.RemoveAllSupportingLayers($"DisplayMem{i}");
+            }
 
             AacFlState[] last_states = new AacFlState[2];
-
             for (int y = 0; y < 16; y++)
             {
+                var display = aac.CreateSupportingFxLayer($"DisplayMem{y}");
+                var start = display.NewState("Start");
+
                 for (int x = 0; x < 16; x++)
                 {
                     var driver_param = display.BoolParameter($"{my.mem_size - 16 + y}_mw{x}");
@@ -210,10 +213,10 @@ namespace DeltaNeverUsed.mu0CPU
                             clip.Animates(my.screen, $"blendShape.{y}_{x}").WithOneFrame(80f);
                         }));
 
-                    if (y+x == 0)
+                    if (x == 0)
                     {
-                        display.EntryTransitionsTo(display_1).When(driver_param.IsEqualTo(true));
-                        display.EntryTransitionsTo(display_0).When(driver_param.IsEqualTo(false));
+                        start.TransitionsTo(display_1).When(driver_param.IsEqualTo(true));
+                        start.TransitionsTo(display_0).When(driver_param.IsEqualTo(false));
                     } else {
                         for (int i = 0; i < 2; i++)
                         {
@@ -224,10 +227,11 @@ namespace DeltaNeverUsed.mu0CPU
                     last_states[0] = display_1;
                     last_states[1] = display_0;
                 }
-            }
-            for (int i = 0; i < 2; i++)
-            {
-                last_states[i].Exits().AfterAnimationFinishes();
+                
+                for (int i = 0; i < 2; i++)
+                {
+                    last_states[i].Exits().AfterAnimationFinishes();
+                }
             }
         }
         
@@ -239,7 +243,7 @@ namespace DeltaNeverUsed.mu0CPU
             aac.RemoveAllMainLayers();
 
             var fx = aac.CreateMainFxLayer();
-            mu0HelperFunctions.init(fx, my.force_old_word);
+            mu0HelperFunctions.init(fx);
 
             memory mem = new memory().init(fx, my.mem_size);
 
@@ -281,10 +285,16 @@ namespace DeltaNeverUsed.mu0CPU
             mu0HelperFunctions.set_conditions_for_OP(shift, load_IR, opcodes["SA"], IR);
             shift.TransitionsTo(exit);
 
-            // loading a register into ACC
-            var reg_load = mu0HelperFunctions.load_reg(fx.NewSubStateMachine("reg_load"), ACC, IR);
-            mu0HelperFunctions.set_conditions_for_OP(reg_load, load_IR, opcodes["LDR"], IR);
-            reg_load.TransitionsTo(exit);
+            // loading carry into ACC
+            var load_carry = mu0HelperFunctions.load_carry(fx, ACC, IR);
+            var ldc = mu0HelperFunctions.set_conditions_for_OP(load_carry, load_IR, opcodes["LDR"].Concat(new bool[12]
+            {
+                false, false, false, false,
+                false, false, false, false,
+                false, false, false, false
+            }).ToArray(), IR);
+
+            load_carry.TransitionsTo(exit).Automatically();
 
             // too lazy to rewrite some code so this is ugly and slow
             var jump = fx.NewSubStateMachine("JMP"); 
@@ -306,7 +316,7 @@ namespace DeltaNeverUsed.mu0CPU
 
             // just turn of enable when the stop instruction is used
             var STP = fx.NewState("STP").Drives(fx.BoolParameter("Enabled"), false);
-            mu0HelperFunctions.set_conditions_for_OP_to_state(STP, load_IR, opcodes["STP"], IR);
+            mu0HelperFunctions.set_conditions_for_OP(STP, load_IR, opcodes["STP"], IR);
             STP.Exits().AfterAnimationFinishes();
 
             load_ACC.TransitionsTo(exit);

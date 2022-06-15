@@ -38,15 +38,12 @@ namespace DeltaNeverUsed.mu0CPU.Functions
         public static AacFlLayer fx;
         public static IAacFlCondition unused;
 
-        public static bool force_old_word;
-
         private static List<AacFlStateMachine> has_exit_state = new List<AacFlStateMachine>();
         private static List<AacFlState> has_exit_state_s = new List<AacFlState>();
 
-        public static void init(AacFlLayer t_fx, bool force_old_word_t)
+        public static void init(AacFlLayer t_fx)
         {
             fx = t_fx;
-            force_old_word = force_old_word_t;
             unused = fx.BoolParameter("UNUSED").IsFalse();
         }
 
@@ -63,98 +60,21 @@ namespace DeltaNeverUsed.mu0CPU.Functions
 
             return exit;
         }
-
-        // Copies a boolean to another boolean
-        public static AacFlStateMachine copy_bool(AacFlStateMachine sm, AacFlBoolParameter dest, AacFlBoolParameter src)
-        {
-            var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_copy_bool");
-            //var start = sm_local.New
-            var one = sm_local.NewState($"{funcs.get_state_id()}_1").Drives(dest, true);
-            var zero = sm_local.NewState($"{funcs.get_state_id()}_0").Drives(dest, false);
-
-            sm_local.EntryTransitionsTo(one);
-            one.TransitionsTo(zero).When(src.IsFalse());
-            one.Exits().When(src.IsTrue());
-            zero.Exits().When(unused);
-
-            return sm_local;
-        }
+        
         // Copies a memory_word to another memory_word
-        public static AacFlStateMachine copy_word(AacFlStateMachine sm, memory_word dest, memory_word src, int offset = 0, bool dir = false)
+        public static AacFlState copy_word(AacFlStateMachine sm, memory_word dest, memory_word src, int offset = 0, bool dir = false)
         {
-            var sm_local = sm.NewSubStateMachine($"{funcs.get_substate_id()}_copy_word");
-            var last_sm = sm_local;
+            var copy = sm.NewState($"{funcs.get_substate_id()}_copy_word");
 
-            // old code
-            if (offset != 0 || force_old_word)
+            for (int i = 0; i < 16; i++)
             {
-                for (int i = 0; i < 16; i++)
-                {
-                    // this is really ugly
-                    var a = dir ? 15 - i + offset : i + offset;
-                    var cpb = copy_bool(sm_local, dest.bits[dir ? 15 - i : i], (a > 15 || a < 0) ? fx.BoolParameter("UNUSED") : src.bits[a]);
-
-                    if (i != 0)
-                    {
-                        last_sm.TransitionsTo(cpb);
-                    }
-                    else
-                    {
-                        last_sm.EntryTransitionsTo(cpb);
-                    }
-
-                    last_sm = cpb;
-                }
-            }
-            else // faster word copy, probably more cpu intensive though..
-            {
-                AacFlBoolParameter[] first_byte = new AacFlBoolParameter[8];
-                AacFlBoolParameter[] second_byte = new AacFlBoolParameter[8];
-                Array.Copy(dest.bits, 0, first_byte, 0, 8);
-                Array.Copy(dest.bits, 7, second_byte, 0, 8);
-
-                AacFlBoolParameter[] first_byte_src = new AacFlBoolParameter[8];
-                AacFlBoolParameter[] second_byte_src = new AacFlBoolParameter[8];
-                Array.Copy(dest.bits, 0, first_byte_src, 0, 8);
-                Array.Copy(dest.bits, 7, second_byte_src, 0, 8);
-
-                var cp_table = new List<bool>();
-
-                for (int i = 0; i < 256; i++)
-                {
-                    var temp = funcs.int_to_bool(i, 8);
-                    foreach (bool t_b in temp)
-                    {
-                        cp_table.Add(t_b);
-                    }
-                }
-
-                for (int pass = 0; pass < 2; pass++)
-                {
-                    var t = create_truth_table(
-                        sm_local,
-                        pass == 0 ? first_byte_src : second_byte_src,
-                        pass == 0 ? first_byte : second_byte,
-                        cp_table.ToArray(),
-                        cp_table.ToArray()
-                    );
-
-                    if (pass != 0)
-                    {
-                        last_sm.TransitionsTo(t);
-                    }
-                    else
-                    {
-                        last_sm.EntryTransitionsTo(t);
-                    }
-
-                    last_sm = t;
-                }
+                // this is really ugly
+                var a = dir ? 15 - i + offset : i + offset;
+                copy.DrivingCopies((a > 15 || a < 0) ? fx.BoolParameter("UNUSED") : src.bits[a], dest.bits[dir ? 15 - i : i]);
             }
 
-            last_sm.Exits().When(unused);
-
-            return sm_local;
+            copy.Exits().Automatically();
+            return copy;
         }
 
         public static AacFlStateMachine copy_from_mem_to_word(AacFlStateMachine sm, memory_word dest, memory src, memory_word PC)
@@ -198,11 +118,18 @@ namespace DeltaNeverUsed.mu0CPU.Functions
 
             return conditions;
         }
-
-        // this is stupid..
-        public static AacFlTransitionContinuation set_conditions_for_OP_to_state(AacFlState sm_dest, AacFlStateMachine sm_src, bool[] opcode, memory_word IR)
+        public static AacFlTransitionContinuation set_conditions_for_OP(AacFlState sm_dest, AacFlStateMachine sm_src, bool[] opcode, memory_word IR)
         {
             var conditions = sm_src.TransitionsTo(sm_dest).WhenConditions();
+            for (int i = 0; i < opcode.Length; i++)
+            {
+                conditions.And(IR.bits[i].IsEqualTo(opcode[i]));
+            }
+
+            return conditions;
+        }
+        public static AacFlTransitionContinuation set_conditions_for_OP(AacFlTransitionContinuation conditions, bool[] opcode, memory_word IR)
+        {
             for (int i = 0; i < opcode.Length; i++)
             {
                 conditions.And(IR.bits[i].IsEqualTo(opcode[i]));
@@ -347,7 +274,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
                 }
                 else
                 {
-                    reset_c.TransitionsTo(reset_c).When(unused);
+                    reset_c.TransitionsTo(fadd).When(unused);
                 }
                 last_sm = fadd;
             }
@@ -403,7 +330,7 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             return sm;
         }
 
-        public static void jump_conditions(AacFlStateMachine sm_dest, AacFlStateMachine sm_src, bool and_or, memory_word ACC)
+        public static void jump_conditions(AacFlState sm_dest, AacFlStateMachine sm_src, bool and_or, memory_word ACC)
         {
             if (and_or)
             {
@@ -422,29 +349,17 @@ namespace DeltaNeverUsed.mu0CPU.Functions
             
         }
 
-        public static AacFlStateMachine load_reg(AacFlStateMachine sm, memory_word ACC, memory_word IR)
+        public static AacFlState load_carry(AacFlLayer fx, memory_word ACC, memory_word IR)
         {
-            var c = sm.NewSubStateMachine("Load carry");
-
-            var c_one = c.NewState($"{funcs.get_state_id()}_1").Drives(ACC.bits[15], true);
-            var c_zero = c.NewState($"{funcs.get_state_id()}_0").Drives(ACC.bits[15], false);
-
-            c.EntryTransitionsTo(c_one);
-            c_one.TransitionsTo(c_zero).When(fx.BoolParameter("Carry").IsFalse());
-            c_one.Exits().When(fx.BoolParameter("Carry").IsTrue());
-            c_zero.Exits().When(unused);
-            c.Exits();
+            var c = fx.NewState("Load_Carr");
+            c.DrivingCopies(fx.BoolParameter("Carry"), ACC.bits[15]);
 
             for (int i = 0; i < 15; i++)
             {
-                c_one.Drives(ACC.bits[i], false);
-                c_zero.Drives(ACC.bits[i], false);
+                c.Drives(ACC.bits[i], false);
             }
 
-            var c_temp = sm.EntryTransitionsTo(c).WhenConditions();
-            for (int i = 0; i < 12; i++) { c_temp.And(IR.bits[11 - i].IsEqualTo(funcs.int_to_bool(0)[11 - i])); }
-
-            return sm;
+            return c;
         }
 
         public static AacFlStateMachine shift(AacFlStateMachine sm, memory_word ACC, memory_word IR)
