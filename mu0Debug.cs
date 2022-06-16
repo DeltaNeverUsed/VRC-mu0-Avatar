@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEditor;
+﻿#if UNITY_EDITOR
 using UnityEngine;
 
 using DeltaNeverUsed.mu0CPU.Functions;
@@ -46,3 +43,4 @@ public class mu0Debug : MonoBehaviour
     
     
 }
+#endif
