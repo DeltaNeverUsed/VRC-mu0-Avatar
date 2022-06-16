@@ -28,8 +28,8 @@ public class mu0Debug : MonoBehaviour
         PC = (ushort)(PC >> 4);
         
         _text.text = $"PC      : {PC:X4}, {PC:D6}\n" +
-                     $"Inst    : {(ushort)(IR >> 12):X1}   , {IR:D2}\n" +
-                     $"InstData:  {(ushort)(IR << 4):X3},   {IR:D4}\n" +
+                     $"Inst    : {(ushort)(IR >> 12):X1}   , {(ushort)(IR >> 12):D2}\n" +
+                     $"InstData:  {(ushort)(IR << 4):X3},   {(ushort)(IR << 4):D4}\n" +
                      $"ACC     : {ACC:X4}, {ACC:D6}\n";
     }
 
