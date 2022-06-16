@@ -7,32 +7,43 @@ using System.Collections.Generic;
 using DeltaNeverUsed.mu0CPU;
 using DeltaNeverUsed.mu0CPU.Structs;
 
-public static class funcs
-{
-    private static int mem_amount = 0;
-    private static int substate_amount = 0;
-    public static int get_mem_id() { mem_amount++; return mem_amount - 1; }
-    public static int get_substate_id() { substate_amount++; return substate_amount - 1; }
-
-    private static int state_amount = 0;
-    public static int get_state_id() { state_amount++; return state_amount - 1; }
-
-    public static bool[] int_to_bool(int input, int size = 12)
-    {
-        bool[] bools = new bool[12];
-
-        for (int i = 0; i < size; i++)
-        {
-            int temp = input >> i;
-            bools[i] = Convert.ToBoolean(temp & 1);
-        }
-
-        return bools;
-    }
-}
-
 namespace DeltaNeverUsed.mu0CPU.Functions
 {
+    public static class funcs
+    {
+        private static int mem_amount = 0;
+        private static int substate_amount = 0;
+        public static int get_mem_id() { mem_amount++; return mem_amount - 1; }
+        public static int get_substate_id() { substate_amount++; return substate_amount - 1; }
+
+        private static int state_amount = 0;
+        public static int get_state_id() { state_amount++; return state_amount - 1; }
+
+        public static bool[] int_to_bool(int input, int size = 12)
+        {
+            bool[] bools = new bool[size];
+
+            for (int i = 0; i < size; i++)
+            {
+                int temp = input >> i;
+                bools[i] = Convert.ToBoolean(temp & 1);
+            }
+
+            return bools;
+        }
+        public static uint bool_to_int(bool[] input)
+        {
+            uint integer = 0;
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (input[i]) 
+                    integer |= (uint)(1 << (input.Length-1)-i);
+            }
+
+            return integer;
+        }
+    }
+    
     public static class mu0HelperFunctions
     {
         public static AacFlLayer fx;

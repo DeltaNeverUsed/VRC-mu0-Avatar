@@ -131,19 +131,6 @@ namespace DeltaNeverUsed.mu0CPU
         {
             my = (mu0)target;
 
-            bool[] int4_to_bool(int input) // same code as in Helper Functions for for a nibble
-            {
-                bool[] bools = new bool[4];
-
-                for (int i = 0; i < 4; i++)
-                {
-                    int temp = input >> i;
-                    bools[i] = Convert.ToBoolean(temp & 1);
-                }
-
-                return bools;
-            }
-
             var aac = AacExample.AnimatorAsCode("mu0load", my.avatar, my.assetContainer, GUID.Generate().ToString());
 
             var load = aac.CreateSupportingFxLayer("Load Prog");
@@ -166,7 +153,7 @@ namespace DeltaNeverUsed.mu0CPU
             {
                 if (a > 15) { a = 0; }
                 var hex_to_int = int.Parse(hex.ToString(), System.Globalization.NumberStyles.HexNumber);
-                var int_to_bool = int4_to_bool(hex_to_int);
+                var int_to_bool = funcs.int_to_bool(hex_to_int, 4);
                 Array.Reverse(int_to_bool);
 
                 foreach (bool bit in int_to_bool)
