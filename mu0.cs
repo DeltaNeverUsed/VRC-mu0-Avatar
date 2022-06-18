@@ -147,6 +147,16 @@ namespace DeltaNeverUsed.mu0CPU
                 text = text.PadRight(my.mem_size * 4, '0');
             }
 
+            var wait = load.NewState("Wait");
+            wait.WithAnimation(aac.NewClip().Animating(clip =>
+            {
+                clip.Animates(my.avatar.GetComponent<Transform>(), "").WithFixedSeconds(1f, 1f);
+            }));
+            var load_state = load.NewState("Load");
+            var stop = load.NewState("stop");
+            wait.TransitionsTo(load_state).Automatically();
+            load_state.TransitionsTo(stop).Automatically();
+
             int pos = 0;
             int a = 0; // i'm lazy
             foreach (char hex in text)
@@ -160,7 +170,7 @@ namespace DeltaNeverUsed.mu0CPU
                 {
                     var parameters = my.assetContainer.parameters;
                     //Debug.Log($"{(float)pos / 4f}_mw{a}");
-                    load.OverrideValue(load.BoolParameter($"{Math.Floor((float)pos / 4f)}_mw{a}"), bit);
+                    load_state.Drives(load.BoolParameter($"{Math.Floor((float)pos / 4f)}_mw{a}"), bit);
                     a++;
                 }
 
